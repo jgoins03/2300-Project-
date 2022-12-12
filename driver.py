@@ -1,26 +1,5 @@
-#Names: Michael Imral, Luke Hendrickson, John Goins
-# CS 2300 Project
-
-
-
 from getpass import getpass
 from mysql.connector import connect, Error
-
-def validateAddCourse(cursor, courseNum, department):
-    ret_query = """
-    SELECT count(*)
-    FROM courses
-    WHERE CourseNum = "{par1}"
-    AND Department = "{par2}"
-    """.format(par1 = courseNum, par2 = department)
-
-    cursor.execute(ret_query)
-    result = cursor.fetchall()
-
-    if (result[0][0] == 0):
-        return False
-    elif (result[0][0] == 1):
-        return True
 
 def validateCourse(cursor, courseNum=-1, department=""):
     if(courseNum == -1 and department != ""):
@@ -160,9 +139,9 @@ def validateProfessor(cursor, profID):
     cursor.execute(ret_query)
     result = cursor.fetchall()
 
-    if (result[0][0] == 0):
+    if (len(result) == 0):
         return False
-    elif (result[0][0] == 1):
+    elif (len(result) >= 1):
         return True
 
 def validateStudent(cursor, studentID):
@@ -175,9 +154,9 @@ def validateStudent(cursor, studentID):
     cursor.execute(ret_query)
     result = cursor.fetchall()
 
-    if (result[0][0] == 0):
+    if (len(result) == 0):
         return False
-    elif (result[0][0] == 1):
+    elif (len(result) >= 1):
         return True
 
 def changeProfDepartmentMenu(connection, cursor):
@@ -404,9 +383,18 @@ def addCourseMenu(connection, cursor):
                 continue
         except ValueError as e:
             print("Must be a valid id:")
-    courseNum = input("Enter the course number: ")
-    sectionNum = input("Enter the section number: ")
-    department = input("Enter the department: ")
+    while True:
+        try:
+            courseNum = int(input("Enter the course number: "))
+            sectionNum = int(input("Enter the section number: "))
+            department = input("Enter the department: ")
+            if (validateAddCourse(cursor, courseNum, department)):
+                break
+            else:
+                print("Must be valid course information:")
+                continue
+        except ValueError as e:
+            print("Must be valid course information:")
     query = add_course(cursor, courseNum, sectionNum, department, studentID)
     try:
         cursor.execute(query)
@@ -416,6 +404,27 @@ def addCourseMenu(connection, cursor):
         print(e)
 
     student_menu(connection, cursor)
+def add_course(cursor, courseNum, sectionNum, department, studentID):
+    ret_query = """
+    INSERT INTO takes
+    VALUES ("{par1}", "{par2}", "{par3}", "{par4}", {par5})
+    """.format(par1 = sectionNum, par2 = studentID, par3 = courseNum, par4 = department, par5 = 0)
+    return ret_query
+def validateAddCourse(cursor, courseNum, department):
+    ret_query = """
+    SELECT count(*)
+    FROM courses
+    WHERE CourseNum = "{par1}"
+    AND Department = "{par2}"
+    """.format(par1 = courseNum, par2 = department)
+
+    cursor.execute(ret_query)
+    result = cursor.fetchall()
+
+    if (len(result) == 0):
+        return False
+    elif (len(result) == 1):
+        return True
 
 def dropCourseMenu(connection, cursor):
     while True:
@@ -581,41 +590,41 @@ def find_course_menu(connection, cursor):
         print(e)
     course_menu(connection, cursor)
 
-def addCourseMenu(connection, cursor):
-    while True:
-        try:
-            print("Enter 0 to return to the previous menu")
-            studentID = int(input("Enter the student's ID: "))
-            if (studentID == 0):
-                break
-            if (validateStudent(cursor, studentID)):
-                break
-            else:
-                print("Must be a valid id:")
-                continue
-        except ValueError as e:
-            print("Must be a valid id:")
-    while True:
-        try:
-            courseNum = int(input("Enter the course number: "))
-            sectionNum = int(input("Enter the section number: "))
-            department = input("Enter the department: ")
-            if (validateAddCourse(cursor, courseNum, department)):
-                break
-            else:
-                print("Must be valid course information:")
-                continue
-        except ValueError as e:
-            print("Must be valid course information:")
-    query = add_course(cursor, courseNum, sectionNum, department, studentID)
+def add_course_menu(connection, cursor):
+    print("")
+    courseNum = int(input("Enter the course number:"))
+    department = input("Enter the department:")
+    credits = int(input("Enter the amount of credits: "))
+    query = ret_query = """
+        INSERT INTO courses(courseNum,Credits,Department)
+        VALUES
+        ({par1},{par2},"{par3}")
+        """.format(par1 = courseNum, par2 = credits, par3 = department)
     try:
         cursor.execute(query)
-        print("Course successfully added.")
         connection.commit()
     except Error as e:
         print(e)
+    course_menu(connection, cursor)
 
-    student_menu(connection, cursor)
+def remove_course(connection, cursor):
+    print("")
+    choice = 0
+    courseNum = int(input("Enter the course number:"))
+    department = input("Enter the department:")
+    credits = int(input("Enter the amount of credits: "))
+    query = ret_query = """
+        DELETE FROM courses
+        WHERE courseNum = {par1}
+        AND Department = "{par3}"
+        AND Credits = {par2}
+        """.format(par1 = courseNum, par2 = credits, par3 = department)
+    try:
+        cursor.execute(query)
+        connection.commit()
+    except Error as e:
+        print(e)
+    course_menu(connection, cursor)
 
 def aggregate(connection, cursor):
     print("")
@@ -824,7 +833,7 @@ def addProfessorCourseMenu(connection, cursor):
 
     changeProfessorCourses(connection, cursor)
 
-# driver function to display a professors current courses
+
 def showProfessorCourseMenu(connection, cursor):
     profID = 0
     print("Enter the professors ID")
@@ -889,43 +898,6 @@ def changeProfessorCourses(connection, cursor):
         prof_menu(connection, cursor)
 
 
-def add_course_menu(connection, cursor):
-    print("")
-    courseNum = int(input("Enter the course number:"))
-    department = input("Enter the department:")
-    credits = int(input("Enter the amount of credits: "))
-    query = ret_query = """
-        INSERT INTO courses(courseNum,Credits,Department)
-        VALUES
-        ({par1},{par2},"{par3}")
-        """.format(par1 = courseNum, par2 = credits, par3 = department)
-    try:
-        cursor.execute(query)
-        connection.commit()
-    except Error as e:
-        print(e)
-    course_menu(connection, cursor)
-
-def remove_course(connection, cursor):
-    print("")
-    choice = 0
-    courseNum = int(input("Enter the course number:"))
-    department = input("Enter the department:")
-    credits = int(input("Enter the amount of credits: "))
-    query = ret_query = """
-        DELETE FROM courses
-        WHERE courseNum = {par1}
-        AND Department = "{par3}"
-        AND Credits = {par2}
-        """.format(par1 = courseNum, par2 = credits, par3 = department)
-    try:
-        cursor.execute(query)
-        connection.commit()
-    except Error as e:
-        print(e)
-    course_menu(connection, cursor)
-
-#main menu for the professor menu
 def prof_menu(connection, cursor):
     print("")
     choice = 0
@@ -958,7 +930,7 @@ def prof_menu(connection, cursor):
 
 
 
-# main menu for the student options
+
 def student_menu(connection, cursor):
     print("")
     choice = 0
@@ -981,7 +953,7 @@ def student_menu(connection, cursor):
             break
 
     if choice == 1:
-        enu(connection, cursor)
+        addCourseMenu(connection, cursor)
     elif choice == 2:
         dropCourseMenu(connection, cursor)
     elif choice == 3:
@@ -994,7 +966,6 @@ def student_menu(connection, cursor):
 
 
 
-# main menu for the course options
 def course_menu(connection, cursor):
     print("")
     choice = 0
@@ -1063,7 +1034,7 @@ def mainMenu(connection, cursor):
 
 def driver():
     try:
-        with connect(host="localhost",user="root",password=input("Enter your password:"),database="mydb") as connection:
+        with connect(host="localhost",user="root",password=input("Enter your passowrd:"),database="mydb") as connection:
                 with connection.cursor() as cursor:
                     print("Welcome to the Missouri S&T administrative tool.")
                     mainMenu(connection, cursor)
